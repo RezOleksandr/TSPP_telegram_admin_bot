@@ -43,24 +43,24 @@ class PinFilter(BaseFilter):
         curs.execute('SELECT rights FROM users WHERE id = {}'.format(message.from_user.id))
         rights = curs.fetchone()[0]
         conn.close()
-        return rights > 0 and message.text == 'Пин'
+        return rights > 0 and message.text == 'Пін'
 
 
 pin_filter = PinFilter()
 
 
-class TsytsFilter(BaseFilter):
+class ROFilter(BaseFilter):
     def filter(self, message):
         conn = sqlite3.connect(config.DBNAME, timeout=10)
         curs = conn.cursor()
         curs.execute('SELECT rights FROM users WHERE id = {}'.format(message.from_user.id))
         rights = curs.fetchone()[0]
         conn.close()
-        if rights > 0 and re.match(r'Цыц', message.text):
-            return not re.match(r'Цыц\S', message.text)
+        if rights > 0 and re.match(r'РО', message.text):
+            return not re.match(r'РО\S', message.text)
 
 
-tsyts_filter = TsytsFilter()
+RO_filter = ROFilter()
 
 
 class RestrictMediaFilter(BaseFilter):
@@ -70,23 +70,23 @@ class RestrictMediaFilter(BaseFilter):
         curs.execute('SELECT rights FROM users WHERE id = {}'.format(message.from_user.id))
         rights = curs.fetchone()[0]
         conn.close()
-        return rights > 0 and ('Минус медиа' == message.text)
+        return rights > 0 and ('Бан медіа' == message.text)
 
 
 restrict_media_filter = RestrictMediaFilter()
 
 
-class PomilovatFilter(BaseFilter):
+class UnbanFilter(BaseFilter):
     def filter(self, message):
         conn = sqlite3.connect(config.DBNAME, timeout=10)
         curs = conn.cursor()
         curs.execute('SELECT rights FROM users WHERE id = "{}"'.format(message.from_user.id))
         rights = curs.fetchone()[0]
         conn.close()
-        return rights > 0 and 'Помиловать' == message.text
+        return rights > 0 and 'Помилувати' == message.text
 
 
-pomilovat_filter = PomilovatFilter()
+unban_filter = UnbanFilter()
 
 
 class KickFilter(BaseFilter):
@@ -96,7 +96,7 @@ class KickFilter(BaseFilter):
         curs.execute('SELECT rights FROM users WHERE id = {}'.format(message.from_user.id))
         rights = curs.fetchone()[0]
         conn.close()
-        return rights > 0 and '!Вжух' == message.text
+        return rights > 0 and '!Бан' == message.text
 
 
 kick_filter = KickFilter()

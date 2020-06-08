@@ -10,13 +10,9 @@ import filters
 import config
 import time
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.DEBUG, stream=open('logs.log', 'a',
-                                                                                         encoding='utf-8'))
-local_logging = logging.getLogger('local_logging')
-local_logging.setLevel(logging.INFO)
-sh = logging.StreamHandler(open('log.log', 'a', encoding='utf-8'))
-local_logging.addHandler(sh)
-formatter = logging.Formatter('%(asctime)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO, stream=open('logs.log', 'a',
+                                                                                        encoding='utf-8'))
+
 
 updater = Updater(token=config.TOKEN, use_context=True, workers=100)
 dispatcher = updater.dispatcher
@@ -26,8 +22,8 @@ dispatcher = updater.dispatcher
 def start(updater, context):
     message = updater.message
     bot = context.bot
-    reply = bot.send_message(message.chat.id, 'Кря')
-    local_logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+    reply = bot.send_message(message.chat.id, message.text)
+    logging.info(eval(config.LOGGING_INFO))
 
 
 @run_async
@@ -46,7 +42,7 @@ def authorise(updater, context):
         conn.commit()
         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                  text='Ви авторизувалися як головний адміністратор')
-        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+        logging.info(eval(config.LOGGING_INFO))
         conn.close()
 
 
@@ -68,33 +64,53 @@ def add_chat(updater, context):
     registered_chats_names = []
     for chat_name in registered_chats_names_raw:
         registered_chats_names.append(chat_name[0])
-    if sender_rights > 2 and message.chat.type != 'private':
+    if sender_rights > 1 and message.chat.type != 'private':
         try:
-            if message.chat.id in registered_chats:
+            if context.args:
+                if context.args[0] and context.args[1]:
+                    chat_id = int(context.args[0])
+                    chat_name = ''
+                    for arg in context.args[1:]:
+                        chat_name += str(arg) + ' '
+                    chat_name = chat_name[:-1]
+                    if chat_id in registered_chats:
+                        if chat_name in registered_chats_names:
+                            reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
+                                                     text='Чат уже зареєстрований')
+                            logging.info(eval(config.LOGGING_INFO))
+                        else:
+                            curs.execute("UPDATE chats SET name = '{0}' WHERE id = {1}".format(chat_name, chat_id))
+                            conn.commit()
+                            reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
+                                                     text='Повторна реєстрація успішна')
+                            logging.info(eval(config.LOGGING_INFO))
+                    else:
+                        curs.execute('INSERT INTO chats VALUES (?,?)', (chat_id, chat_name))
+                        conn.commit()
+                        reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
+                                                 text='Реєстрація успішна')
+                        logging.info(eval(config.LOGGING_INFO))
+            elif message.chat.id in registered_chats:
                 if message.chat.title in registered_chats_names:
                     reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                              text='Чат уже зареєстрований')
-                    logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                    logging.info(eval(config.LOGGING_INFO))
                 else:
                     curs.execute("UPDATE chats SET name = '{0}' WHERE id = {1}".format(message.chat.title,
                                                                                        message.chat.id))
                     conn.commit()
                     reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                             text='Регістрація успішна')
-                    logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                                             text='Повторна реєстрація успішна')
+                    logging.info(eval(config.LOGGING_INFO))
             else:
                 curs.execute('INSERT INTO chats VALUES (?,?)', (message.chat.id, message.chat.title))
                 conn.commit()
                 reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                         text='Регістрація успішна')
-                logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                                         text='Реєстрація успішна')
+                logging.info(eval(config.LOGGING_INFO))
         except Exception:
-            reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Ошибка')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
-    else:
-        reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                 text='У вас недостатньо прав')
-        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Помилка')
+            logging.info(eval(config.LOGGING_INFO))
     conn.close()
 
 
@@ -114,7 +130,7 @@ def registration_applications_list(updater, context):
             text += f'{application[0]}  {application[1]}\n'
         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                  text=text)
-        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+        logging.info(eval(config.LOGGING_INFO))
         conn.close()
 
 
@@ -138,7 +154,7 @@ def apply_for_registration(updater, context):
         conn.commit()
         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                  text='Ви відправили заявку на реєстрацію')
-        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+        logging.info(eval(config.LOGGING_INFO))
     conn.close()
 
 
@@ -164,7 +180,7 @@ def apply_registration(updater, context):
             conn.commit()
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                      text='Реєстрація успішна')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            logging.info(eval(config.LOGGING_INFO))
     conn.close()
 
 
@@ -180,7 +196,7 @@ def promote(updater, context):
         if message.from_user.id == message.reply_to_message.from_user.id:
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                      text='Не готово')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            logging.info(eval(config.LOGGING_INFO))
         else:
             if sender_rights > 1:
                 curs.execute('SELECT rights FROM users WHERE id = {}'.format(message.reply_to_message.from_user.id))
@@ -191,8 +207,8 @@ def promote(updater, context):
                     target_rights = target_rights[0]
                 if target_rights > 0:
                     reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                             text='Максимальное завание')
-                    logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                                             text='Максимальний рівень доступу')
+                    logging.info(eval(config.LOGGING_INFO))
                 else:
                     try:
                         curs.execute(
@@ -202,16 +218,13 @@ def promote(updater, context):
                             message.reply_to_message.from_user.id, rights + 1))
                         conn.commit()
                         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                                 text='Повышение успешно')
-                        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                                                 text='Рівень доступу збільшено')
+                        logging.info(eval(config.LOGGING_INFO))
                     except:
                         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                                 text='Ошибка')
-                        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
-            else:
-                reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                         text='У вас недостаточно прав')
-                logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                                                 text='Помилка')
+                        logging.info(eval(config.LOGGING_INFO))
+                logging.info(eval(config.LOGGING_INFO))
     conn.close()
 
 
@@ -227,7 +240,7 @@ def demote(updater, context):
         if message.from_user.id == message.reply_to_message.from_user.id:
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                      text='Не готово')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            logging.info(eval(config.LOGGING_INFO))
         else:
             if sender_rights > 1:
                 try:
@@ -240,26 +253,19 @@ def demote(updater, context):
                         target_rights = target_rights[0]
                     if target_rights == 0:
                         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                                 text='Минимальный ранг')
-                        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                                                 text='Мінімальний рівень доступу')
+                        logging.info(eval(config.LOGGING_INFO))
                     else:
                         curs.execute('UPDATE users SET rights = {1} WHERE id = {0}'.format(
                             message.reply_to_message.from_user.id, target_rights - 1))
                         conn.commit()
                         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                                 text='Понижение успешно')
-                        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                                                 text='Рівень доступу зменшено')
+                        logging.info(eval(config.LOGGING_INFO))
                 except:
                     reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                             text='Ошибка')
-                    logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
-            else:
-                reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
-                                         text='У вас недостаточно прав')
-                logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
-    else:
-        reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Не готово')
-        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                                             text='Помилка')
+                    logging.info(eval(config.LOGGING_INFO))
     conn.close()
 
 
@@ -271,12 +277,12 @@ def pin(updater, context, timeout=10):
         try:
             bot.pin_chat_message(chat_id=message.chat.id, message_id=message.reply_to_message.message_id)
         except:
-            reply = bot.send_message(chat_id=message.chat.id, text='Ошибка')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            reply = bot.send_message(chat_id=message.chat.id, text='Помилка')
+            logging.info(eval(config.LOGGING_INFO))
 
 
 @run_async
-def tsyts(updater, context):
+def RO(updater, context):
     message = updater.message
     bot = context.bot
     restrictions = telegram.ChatPermissions(can_send_messages=False)
@@ -291,26 +297,26 @@ def tsyts(updater, context):
             target_rights = target_rights[0]
         if target_rights == 0:
             try:
-                if len(message.text) == 3:
+                if len(message.text) == 2:
                     bot.restrict_chat_member(chat_id=message.chat.id, user_id=message.reply_to_message.from_user.id,
                                              permissions=restrictions, until_date=int(time.time() + 300))
                     reply = bot.send_message(chat_id=message.chat.id, text='Готово')
-                    logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                    logging.info(eval(config.LOGGING_INFO))
                 else:
-                    until_date = time.time() + int(message.text[4:]) * 60
+                    until_date = time.time() + int(message.text[3:]) * 60
                     bot.restrict_chat_member(chat_id=message.chat.id, user_id=message.reply_to_message.from_user.id,
                                              permissions=restrictions, until_date=until_date)
                     reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                              text='Готово')
-                    logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                    logging.info(eval(config.LOGGING_INFO))
             except Exception:
                 reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                          text='Не готово')
-                logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                logging.info(eval(config.LOGGING_INFO))
                 print(Exception.args)
         else:
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Не готово')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            logging.info(eval(config.LOGGING_INFO))
         conn.close()
 
 
@@ -333,14 +339,14 @@ def restrict_media(updater, context):
                 bot.restrict_chat_member(chat_id=message.chat.id, user_id=message.reply_to_message.from_user.id,
                                          permissions=restrictions)
                 reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Готово')
-                logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                logging.info(eval(config.LOGGING_INFO))
             except:
                 reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                          text='Не готово')
-                logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                logging.info(eval(config.LOGGING_INFO))
         else:
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Не готово')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            logging.info(eval(config.LOGGING_INFO))
         conn.close()
 
 
@@ -367,29 +373,29 @@ def kick(updater, context):
                 except Exception:
                     pass
                 reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Готово')
-                logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                logging.info(eval(config.LOGGING_INFO))
             except:
                 reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                          text='Не готово')
-                logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+                logging.info(eval(config.LOGGING_INFO))
         else:
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Не готово')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            logging.info(eval(config.LOGGING_INFO))
         conn.close()
 
 
 @run_async
-def pomilovat(updater, context):
+def unban(updater, context):
     message = updater.message
     bot = context.bot
     if message.reply_to_message:
         try:
             bot.promote_chat_member(chat_id=message.chat.id, user_id=message.reply_to_message.from_user.id)
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Готово')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
-        except:
+            logging.info(eval(config.LOGGING_INFO))
+        except Exception:
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id, text='Не готово')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            logging.info(eval(config.LOGGING_INFO))
 
 
 @run_async
@@ -401,26 +407,26 @@ def not_registered_user(updater, context):
         bot.unban_chat_member(chat_id=message.chat.id, user_id=message.from_user.id)
         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                  text='Незареєстрований користувачи вилучений з чату')
-        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+        logging.info(eval(config.LOGGING_INFO))
         try:
             bot.kick_chat_member(chat_id=-1001447327709, user_id=message.from_user.id)
             reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                      text='Незареєстрований користувачи вилучений з каналу')
-            logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+            logging.info(eval(config.LOGGING_INFO))
         except Exception:
             pass
     except Exception:
         reply = bot.send_message(chat_id=message.chat.id, reply_to_message_id=message.message_id,
                                  text='Незареєстрований користувач')
-        logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+        logging.info(eval(config.LOGGING_INFO))
 
 
 @run_async
 def not_registered_chat(updater, context):
     message = updater.message
     bot = context.bot
-    reply = bot.send_message(chat_id=message.chat.id, text='Не зарегистрированный чат')
-    logging.info(eval(config.LOGGING_INFO_TEXT_FULL))
+    reply = bot.send_message(chat_id=message.chat.id, text='Незареєстрований чат')
+    logging.info(eval(config.LOGGING_INFO))
 
 
 @run_async
@@ -436,14 +442,14 @@ def main():
     dispatcher.add_handler(MessageHandler(filters.not_registered_user_filter, not_registered_user))
     dispatcher.add_handler(CommandHandler('add_chat', add_chat))
     dispatcher.add_handler(CommandHandler('registration_applications_list', registration_applications_list))
-    dispatcher.add_handler(CommandHandler('apply', apply_registration))
+    dispatcher.add_handler(CommandHandler('apply_registration', apply_registration))
     dispatcher.add_handler(MessageHandler(filters.not_registered_chat_filter, not_registered_chat))
-    # dispatcher.add_handler(CommandHandler('promote', promote))
-    # dispatcher.add_handler(CommandHandler('demote', demote))
+    dispatcher.add_handler(CommandHandler('promote', promote))
+    dispatcher.add_handler(CommandHandler('demote', demote))
     dispatcher.add_handler(MessageHandler(filters.pin_filter, pin))
-    dispatcher.add_handler(MessageHandler(filters.tsyts_filter, tsyts))
+    dispatcher.add_handler(MessageHandler(filters.RO_filter, RO))
     dispatcher.add_handler(MessageHandler(filters.restrict_media_filter, restrict_media))
-    dispatcher.add_handler(MessageHandler(filters.pomilovat_filter, pomilovat))
+    dispatcher.add_handler(MessageHandler(filters.unban_filter, unban))
     dispatcher.add_handler(MessageHandler(filters.kick_filter, kick))
 
     updater.start_polling(timeout=10)

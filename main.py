@@ -171,10 +171,7 @@ def apply_registration(updater, context):
         application = curs.fetchone()
         curs.execute('SELECT id FROM users WHERE id = {}'.format(int(context.args[0])))
         user = curs.fetchone()
-        print(application)
-        print(user)
         if application and not user:
-            print(1)
             curs.execute('INSERT INTO users VALUES (?,?,?)', [application[0], application[1], 0])
             curs.execute(f'DELETE FROM registration_applications WHERE id = {application[0]}')
             conn.commit()

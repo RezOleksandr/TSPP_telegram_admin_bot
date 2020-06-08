@@ -270,7 +270,7 @@ def demote(updater, context):
 
 
 @run_async
-def pin(updater, context, timeout=10):
+def pin(updater, context):
     message = updater.message
     bot = context.bot
     if message.reply_to_message:
